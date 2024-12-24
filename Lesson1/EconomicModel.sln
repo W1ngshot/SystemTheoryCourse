@@ -1,0 +1,24 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EconomicModel", "EconomicModel\EconomicModel.csproj", "{FAC42CF9-8FC0-4BFF-82A9-C40B6F2255DA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sql", "sql", "{8F96DF44-C8B9-4FBB-855E-A1D1207FDAD4}"
+	ProjectSection(SolutionItems) = preProject
+		direct_cost_ratio.sql = direct_cost_ratio.sql
+		total_consumer_consumption.sql = total_consumer_consumption.sql
+		direct_cost_ratio.csv = direct_cost_ratio.csv
+		total_consumer_consumption.csv = total_consumer_consumption.csv
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FAC42CF9-8FC0-4BFF-82A9-C40B6F2255DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FAC42CF9-8FC0-4BFF-82A9-C40B6F2255DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FAC42CF9-8FC0-4BFF-82A9-C40B6F2255DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FAC42CF9-8FC0-4BFF-82A9-C40B6F2255DA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
