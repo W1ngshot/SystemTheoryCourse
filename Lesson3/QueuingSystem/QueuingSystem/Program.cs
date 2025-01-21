@@ -32,13 +32,6 @@ var filteredRecords = records
     .Select(r => new { Timestamp = r.Timestamp, Count = 1 })
     .ToList();
 
-//1440
-var timeIntervals = new List<TimeSpan>();
-for (var i = 5; i <= 10080; i+=5)
-{
-    timeIntervals.Add(TimeSpan.FromMinutes(i));
-}
-/*
 var timeIntervals = new List<TimeSpan>
 {
     TimeSpan.FromMinutes(5),
@@ -52,7 +45,7 @@ var timeIntervals = new List<TimeSpan>
     TimeSpan.FromHours(12),
     TimeSpan.FromDays(1)
 };
-*/
+
 var minVariance = double.MaxValue;
 var minVarianceMean = 0d;
 var bestInterval = TimeSpan.Zero;

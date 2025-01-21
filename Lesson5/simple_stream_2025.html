@@ -1,0 +1,190 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple stream with flow measurement</title>
+    <style>
+        canvas {
+            background-color: #afafaf;
+            display: block;
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Расчет простого потока</h1>
+<div>
+    <button onclick="start();">Запустить</button>
+    <button onclick="stop();">Остановить</button>
+</div>
+<br>
+
+<div>
+    Интенсивность на выходе (машин/час):
+    <span id="outFlow">0</span>
+</div>
+
+<canvas id="road"></canvas>
+
+<script type="text/javascript">
+    // ======================
+    // ПАРАМЕТРЫ СИМУЛЯЦИИ:
+    // ======================
+    let dt = 0.5;               // шаг расчета (сек)
+    let N = 2000;               // интенсивность (автомобилей/час)
+    let L = 300;                // Длина участка (м)
+    let V_max = 180 * 1000 / 3600; // максимальная скорость (180 км/ч в м/с ~ 50 м/с)
+    let V_bridge_limit = 30 * 1000 / 3600; // ограничение скорости на мосту (30 км/ч в м/с ~ 8.33 м/с)
+
+    // Параметры моста
+    let bridgeStart = 100;      // начало моста (м)
+    let bridgeEnd = 200;        // конец моста (м)
+    let visibilityDistance = 150; // расстояние, на котором водитель видит знак ограничения (м)
+
+    // Прочие параметры
+    let K_opt = 0.5;
+    let D_opt = K_opt * V_max * 3600 / 1000;  // "оптимальная" дистанция
+    let D_min = 4;           // минимальная дистанция (м)
+    let a_start = 2.78;      // ускорение разгона (м/с^2)
+    let a_stop = -8;         // ускорение торможения (м/с^2)
+    let a_ex_stop = -10;     // ускорение экстренного торможения (м/с^2)
+    let L_auto = 4.2;        // длина автомобиля (м)
+    let V_skop = 10 * 1000 / 3600; // скорость, счит. "пробкой" (10 км/ч в м/с)
+
+    let agents = [];          // Массив агентов (автомобилей)
+    let T_global = 0;         // Глобальное время
+    let lane_ = 0;            // Текущая полоса (0 или 1)
+    let exitTimes = [];       // Моменты времени выхода автомобилей
+    let timeWindow = 60;      // Скольжение окна для подсчета интенсивности
+
+    let canvas = document.getElementById("road");
+    let ctx = canvas.getContext('2d');
+    let timerId = null;       // Таймер для расчета
+    let streamID = null;      // Таймер генерации машин
+
+    document.addEventListener("DOMContentLoaded", () => {
+        canvas.height = 100;
+        canvas.width = L; // ширина в пикселях = длине в метрах
+    });
+
+    function distance(i, lastCar) {
+        if (lastCar != null) {
+            return lastCar.x - L_auto - agents[i].x;
+        } else {
+            return 10000;
+        }
+    }
+
+    function calculate_step() {
+        T_global += dt;
+
+        let last_agent = [null, null];
+
+        for (let i = 0; i < agents.length; i++) {
+            if (agents[i].x > L) {
+                exitTimes.push(T_global);
+                agents.splice(i, 1);
+                i--;
+                continue;
+            }
+
+            if (agents[i].V >= 0) {
+                let v_next = agents[i].V + agents[i].a * dt;
+                if (v_next > 0) {
+                    agents[i].x += agents[i].V * dt + 0.5 * agents[i].a * dt * dt;
+                    agents[i].V = v_next;
+                    D_opt = K_opt * agents[i].V * 3.6;
+                    if (D_opt < D_min) {
+                        D_opt = D_min;
+                    }
+                } else {
+                    agents[i].V = 0;
+                    agents[i].a = 0;
+                    D_opt = D_min;
+                }
+            } else {
+                agents[i].V = 0;
+                agents[i].a = 0;
+                continue;
+            }
+
+            let d = distance(i, last_agent[agents[i].lane]);
+            last_agent[agents[i].lane] = agents[i];
+
+            // Логика ограничения скорости на мосту
+            if (agents[i].x >= bridgeStart - visibilityDistance && agents[i].x < bridgeStart) {
+                agents[i].a = agents[i].V > V_bridge_limit ? a_stop : 0;
+            } else if (agents[i].x >= bridgeStart && agents[i].x <= bridgeEnd) {
+                agents[i].a = agents[i].V > V_bridge_limit ? a_stop : 0;
+            } else if (d === D_opt) {
+                agents[i].a = 0;
+            } else if (d > D_opt) {
+                if (agents[i].V < V_max) {
+                    agents[i].a = a_start;
+                } else {
+                    agents[i].a = 0;
+                }
+            } else if (d > D_min) {
+                agents[i].a = a_stop;
+            } else {
+                agents[i].a = a_ex_stop;
+            }
+        }
+
+        plot();
+        measureFlow();
+    }
+
+    function make_agent() {
+        let v = V_max;
+        agents.push({
+            V: v,
+            a: 0,
+            x: 0,
+            t: T_global,
+            lane: lane_
+        });
+        lane_ = (lane_ === 0) ? 1 : 0;
+    }
+
+    function start() {
+        timerId = setInterval(calculate_step, dt * 1000);
+        streamID = setInterval(make_agent, 1000 * 3600 / N);
+    }
+
+    function stop() {
+        clearInterval(timerId);
+        clearInterval(streamID);
+    }
+
+    function measureFlow() {
+        exitTimes = exitTimes.filter(t => t >= (T_global - timeWindow));
+        let countLastWindow = exitTimes.length;
+        let flowPerHour = (countLastWindow / timeWindow) * 3600;
+        document.getElementById("outFlow").innerText = flowPerHour.toFixed(2);
+    }
+
+    function plot() {
+        ctx.clearRect(0, 0, canvas.width, 200);
+
+        ctx.strokeStyle = "blue";
+        ctx.beginPath();
+        ctx.moveTo(L, 0);
+        ctx.lineTo(L, 100);
+        ctx.stroke();
+
+        ctx.fillStyle = "#00FF00";
+        ctx.fillRect(bridgeStart, 0, bridgeEnd - bridgeStart, canvas.height);
+
+        ctx.fillStyle = "#FF0000";
+        for (let i = 0; i < agents.length; i++) {
+            ctx.fillRect(agents[i].x, 30 + 30 * agents[i].lane, 5, 2);
+        }
+    }
+</script>
+
+</body>
+</html>
